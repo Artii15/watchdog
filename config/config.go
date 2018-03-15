@@ -5,10 +5,10 @@ import "flag"
 const defaultLogFileLocation = "/var/log/watchdog"
 
 type ProgramSettings struct {
-	logfileLocation string
-	dynamoDbTableName string
-	dynamoDbPrimaryKey string
-	snsTopic string
+	LogfileLocation string
+	DynamoDbTableName string
+	DynamoDbPrimaryKey string
+	SnsTopic string
 }
 
 func LoadProgramSettings() *ProgramSettings {
@@ -18,9 +18,9 @@ func LoadProgramSettings() *ProgramSettings {
 	snsTopic := flag.String("s", "", "SnS topic name")
 
 	return &ProgramSettings{
-		logfileLocation: *logfileLocation,
-		dynamoDbTableName: *dynamoDbTableName,
-		dynamoDbPrimaryKey: *dynamoDbPrimaryKey,
-		snsTopic: *snsTopic,
+		LogfileLocation: *logfileLocation,
+		DynamoDbTableName: *dynamoDbTableName,
+		DynamoDbPrimaryKey: *dynamoDbPrimaryKey,
+		SnsTopic: *snsTopic,
 	}
 }
