@@ -59,19 +59,27 @@ func main()  {
 	defer servicesCheckingTicker.Stop()
 
 	configChannel := make(chan *checker.Config)
+	checkerChannel := make(chan bool)
 	signalsChannel := make(chan os.Signal, 1)
     signal.Notify(signalsChannel, syscall.SIGINT, syscall.SIGTERM)
 
-	servicesChecker := checker.New(snsNotifier, loggersObject)
+	servicesChecker := checker.New(snsNotifier, loggersObject, checkerChannel)
+
+	areServicesBeingChecked := false
 	stopProgram := false
 	for !stopProgram {
 		select {
 		case <-servicesCheckingTicker.C:
-			go servicesChecker.Check(checkerConfig)
+			if !areServicesBeingChecked {
+				go servicesChecker.Check(checkerConfig)
+				areServicesBeingChecked = true
+			}
 		case <-configCheckingTicker.C:
 			go reloadConfig(configChannel)
 		case newConfig := <-configChannel:
 			checkerConfig = newConfig
+		case <-checkerChannel:
+			areServicesBeingChecked = false
 		case <-signalsChannel:
 			stopProgram = true
 		}

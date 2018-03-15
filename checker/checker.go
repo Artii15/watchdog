@@ -10,32 +10,29 @@ import (
 )
 
 type checker struct {
-	isLastCheckingFinished bool
 	snsNotifier *sns.Notifier
 	loggersObject *loggers.Loggers
 	servicesDeadDuringPrevChecks map[string]bool
+	responseChannel chan<- bool
 }
 
-func New(snsNotifier *sns.Notifier, loggersObject *loggers.Loggers) *checker {
+func New(snsNotifier *sns.Notifier, loggersObject *loggers.Loggers, responseChannel chan<- bool) *checker {
 	return &checker{
-		isLastCheckingFinished: true,
 		snsNotifier:snsNotifier,
 		loggersObject: loggersObject,
 		servicesDeadDuringPrevChecks: make(map[string]bool),
+		responseChannel: responseChannel,
 	}
 }
 
 func (checker *checker) Check(config *Config) {
-	if checker.isLastCheckingFinished {
-		checker.isLastCheckingFinished = false
-		newDeadServices := checker.getDeadServices(config)
-		checker.handleNewDeadServices(newDeadServices, config)
-		checker.isLastCheckingFinished = true
-	}
+	newDeadServices := checker.getDeadServices(config)
+	checker.handleNewDeadServices(newDeadServices, config)
+	checker.responseChannel<- true
 }
 
 func (checker *checker) getDeadServices(config *Config) []string {
-	newDeadServices := make([]string, len(config.ListOfServices))
+	var newDeadServices []string
 	for _, serviceName := range config.ListOfServices {
 		if isServiceRunning(serviceName) {
 			checker.servicesDeadDuringPrevChecks[serviceName] = false
@@ -84,6 +81,7 @@ func (checker *checker) tryToRecoverService(serviceName string, config *Config) 
 		checker.loggersObject.Info.Println("Attempting to restart", serviceName, "Attempt", currentAttemptNo)
 		isServiceActive = restartAndCheckIfRunning(serviceName)
 		if isServiceActive {
+			checker.servicesDeadDuringPrevChecks[serviceName] = false
 			successMessage := fmt.Sprintf("Service %s successfully restarted after %d attempts", serviceName, currentAttemptNo)
 			checker.loggersObject.Info.Println(successMessage)
 			checker.snsNotifier.Notify(successMessage)
