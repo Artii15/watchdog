@@ -12,10 +12,10 @@ type ProgramSettings struct {
 }
 
 func LoadProgramSettings() *ProgramSettings {
-	logfileLocation := flag.String("l", defaultLogFileLocation, "path to logfile")
-	dynamoDbTableName := flag.String("t", "", "Dynamo DB table name")
-	dynamoDbPrimaryKey := flag.String("p", "", "Primary key of configuration in Dynamo DB")
-	snsTopic := flag.String("s", "", "SnS topic name")
+	logfileLocation := flag.String("logfile", defaultLogFileLocation, "path to logfile")
+	dynamoDbTableName := flag.String("dynamo-table", "", "Dynamo DB table name")
+	dynamoDbPrimaryKey := flag.String("dynamo-key", "", "Primary key of configuration in Dynamo DB")
+	snsTopic := flag.String("sns", "", "SnS topic name")
 
 	return &ProgramSettings{
 		LogfileLocation: *logfileLocation,
