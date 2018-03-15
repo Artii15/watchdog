@@ -1,13 +1,19 @@
 package checker
 
-import "os/exec"
+import (
+	"os/exec"
+	"watchdog/aws/sns"
+	"watchdog/loggers"
+)
 
 type checker struct {
 	isLastCheckingFinished bool
+	snsNotifier *sns.Notifier
+	loggersObject *loggers.Loggers
 }
 
-func New() *checker {
-	return &checker{isLastCheckingFinished: true}
+func New(snsNotifier *sns.Notifier, loggersObject *loggers.Loggers) *checker {
+	return &checker{isLastCheckingFinished: true, snsNotifier:snsNotifier, loggersObject: loggersObject}
 }
 
 func (checker *checker) Check(config *Config) {

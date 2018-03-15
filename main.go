@@ -40,7 +40,7 @@ func main()  {
 	checkerConfig := checker.Config{NumOfSecCheck:1, ListOfServices:[]string{"docker"}, NumOfAttempts:2, NumOfSecWait:1}
 	servicesCheckingTicker := time.NewTicker(time.Duration(checkerConfig.NumOfSecCheck) * time.Second)
 
-	servicesChecker := checker.New()
+	servicesChecker := checker.New(snsNotifier, loggersObject)
 	for {
 		select {
 		case <-servicesCheckingTicker.C:
