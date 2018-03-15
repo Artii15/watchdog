@@ -28,5 +28,5 @@ func init() {
 }
 
 func main()  {
-
+	loggersObject.Info.Println("Starting watchdog")
 }

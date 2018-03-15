@@ -1,6 +1,6 @@
-package config
+package checker
 
-type ExternalConfig struct {
+type Config struct {
 	ListOfServices []string
 	NumOfSecCheck int
 	NumOfSecWait int
