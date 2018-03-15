@@ -4,11 +4,20 @@ import "os/exec"
 
 type Checker struct {
 	Config *Config
-	
+
 }
 
 func New(config *Config) *Checker {
 	return &Checker{Config:config}
+}
+
+func restartAndCheckIfRunning(serviceName string) bool {
+	restart(serviceName)
+	return isServiceRunning(serviceName)
+}
+
+func restart(serviceName string)  {
+	runCommand("service", serviceName, "restart")
 }
 
 func isServiceRunning(serviceName string) bool {

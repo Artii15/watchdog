@@ -4,8 +4,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/aws"
-	"watchdog/config"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"watchdog/checker"
 )
 
 type ConfigLoader struct {
@@ -19,7 +19,7 @@ func New(awsSession client.ConfigProvider, tableName, primaryKey string) *Config
 	return &ConfigLoader{dynamoService:dynamoDbService, tableName:tableName, primaryKey:primaryKey}
 }
 
-func (loader *ConfigLoader) reloadConfig() (*config.ExternalConfig, error) {
+func (loader *ConfigLoader) ReloadConfig() (*checker.Config, error) {
 	input := &dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"id": {
@@ -31,9 +31,9 @@ func (loader *ConfigLoader) reloadConfig() (*config.ExternalConfig, error) {
 
 	result,err := loader.dynamoService.GetItem(input)
 	if err == nil {
-		var externalConfig config.ExternalConfig
-		dynamodbattribute.UnmarshalMap(result.Item, &externalConfig)
-		return &externalConfig, nil
+		var checkerConfig checker.Config
+		dynamodbattribute.UnmarshalMap(result.Item, &checkerConfig)
+		return &checkerConfig, nil
 	} else {
 		return nil, err
 	}

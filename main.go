@@ -6,6 +6,7 @@ import (
 	"watchdog/aws/dynamo"
 	"watchdog/aws/sns"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"time"
 )
 
 var programSettings *config.ProgramSettings
@@ -28,5 +29,18 @@ func init() {
 }
 
 func main()  {
-	loggersObject.Info.Println("Starting watchdog")
+	loggersObject.Info.Println("Fetching config from dynamoDb")
+	checkerConfig, dynamoErr := dynamoLoader.ReloadConfig()
+	if dynamoErr != nil {
+		loggersObject.Error.Println("Could not fetch config from dynamoDb", dynamoErr)
+		panic("Retrieving information about configuration was not possible")
+	}
+	servicesCheckingTicker := time.NewTicker(time.Duration(checkerConfig.NumOfSecCheck) * time.Second)
+
+	for {
+		select {
+		case <-servicesCheckingTicker.C:
+			loggersObject.Info.Println("Checking services")
+		}
+	}
 }
