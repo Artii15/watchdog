@@ -4,6 +4,9 @@ import (
 	"os/exec"
 	"watchdog/aws/sns"
 	"watchdog/loggers"
+	"fmt"
+	"time"
+	"sync"
 )
 
 type checker struct {
@@ -26,6 +29,7 @@ func (checker *checker) Check(config *Config) {
 	if checker.isLastCheckingFinished {
 		checker.isLastCheckingFinished = false
 		newDeadServices := checker.getDeadServices(config)
+		checker.handleNewDeadServices(newDeadServices, config)
 		checker.isLastCheckingFinished = true
 	}
 }
@@ -48,6 +52,43 @@ func (checker *checker) getDeadServices(config *Config) []string {
 func (checker *checker) isNewDeadService(serviceName string) bool {
 	wasDead, wasChecked := checker.servicesDeadDuringPrevChecks[serviceName]
 	return !wasChecked || !wasDead
+}
+
+func (checker *checker) handleNewDeadServices(deadServices []string, config *Config) {
+	waitGroup := &sync.WaitGroup{}
+	for _, serviceName := range deadServices {
+		waitGroup.Add(1)
+		go func() {
+			checker.logServiceFailure(serviceName)
+			checker.tryToRecoverService(serviceName, config)
+			waitGroup.Done()
+		}()
+	}
+	waitGroup.Wait()
+}
+
+func (checker *checker) logServiceFailure(serviceName string)  {
+	message := fmt.Sprintf("Service %s is now inactive", serviceName)
+	checker.loggersObject.Warning.Println(message)
+	checker.snsNotifier.Notify(message)
+}
+
+func (checker *checker) tryToRecoverService(serviceName string, config *Config)  {
+	attemptsTimer := time.NewTimer(time.Duration(config.NumOfSecWait) * time.Second)
+	isServiceActive := false
+	attemptsDone := 0
+	for ; attemptsDone < config.NumOfAttempts && !isServiceActive; attemptsDone++ {
+		currentAttemptNo := attemptsDone + 1
+		checker.loggersObject.Info.Println("Attempting to restart", serviceName, "Attempt", currentAttemptNo)
+		isServiceActive = restartAndCheckIfRunning(serviceName)
+		if isServiceActive {
+			checker.loggersObject.Info.Println("Service", serviceName, "successfully restarted after", currentAttemptNo, "attempts")
+		} else {
+			checker.loggersObject.Warning.Println("Service", serviceName, "still not active after", currentAttemptNo, "restarts")
+			<-attemptsTimer.C
+		}
+	}
+	attemptsTimer.Stop()
 }
 
 func restartAndCheckIfRunning(serviceName string) bool {
