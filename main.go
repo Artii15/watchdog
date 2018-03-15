@@ -9,42 +9,34 @@ import (
 	"time"
 	"watchdog/checker"
 	"os"
-	"os/signal"
-	"syscall"
 )
-
-var programSettings *config.ProgramSettings
-var loggersObject *loggers.Loggers
-var dynamoLoader *dynamo.ConfigLoader
-var snsNotifier *sns.Notifier
 
 const configRefreshingIntervalInMinutes = 15
 
-func init() {
-	programSettings = config.LoadProgramSettings()
-	loggersObject = loggers.New(programSettings.LogfileLocation)
+func main()  {
+	programSettings := config.LoadProgramSettings()
+
+	var logfile, logfileErr = os.OpenFile(programSettings.LogfileLocation, os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0644)
+	var loggersObject *loggers.Loggers
+	if logfileErr == nil {
+		loggersObject = loggers.New(logfile)
+		defer logfile.Close()
+	} else {
+		loggersObject = loggers.New(os.Stdout)
+		loggersObject.Warning.Println("Could not open", logfile, "using stdout instead")
+	}
 
 	awsSession, sessionError := session.NewSession()
+	var snsNotifier *sns.Notifier
+	var dynamoLoader *dynamo.ConfigLoader
 	if sessionError != nil {
 		loggersObject.Error.Println("Could not create aws session", sessionError)
 		panic("Exiting. No AWS session")
 	} else {
-		dynamoLoader = dynamo.New(awsSession, programSettings.DynamoDbTableName, programSettings.DynamoDbPrimaryKey)
+		dynamoLoader = dynamo.New(awsSession, programSettings.DynamoDbTableName, programSettings.DynamoDbPrimaryKey, loggersObject)
 		snsNotifier = sns.New(awsSession, programSettings.SnsTopic)
 	}
-}
 
-func reloadConfig(configChannel chan<- *checker.Config)  {
-	newConfig, dynamoError := dynamoLoader.ReloadConfig()
-	if dynamoError == nil {
-		loggersObject.Error.Println("Could not load new configuration from dynamo db", dynamoError)
-	} else {
-		loggersObject.Info.Println("New configuration fetched from dynamoDb")
-		configChannel<- newConfig
-	}
-}
-
-func main()  {
 	loggersObject.Info.Println("Fetching config from dynamoDb")
 	checkerConfig, dynamoErr := dynamoLoader.ReloadConfig()
 	if dynamoErr != nil {
@@ -60,14 +52,11 @@ func main()  {
 
 	configChannel := make(chan *checker.Config)
 	checkerChannel := make(chan bool)
-	signalsChannel := make(chan os.Signal, 1)
-    signal.Notify(signalsChannel, syscall.SIGINT, syscall.SIGTERM)
 
 	servicesChecker := checker.New(snsNotifier, loggersObject, checkerChannel)
-
-	areServicesBeingChecked := false
-	stopProgram := false
-	for !stopProgram {
+	go servicesChecker.Check(checkerConfig)
+	areServicesBeingChecked := true
+	for {
 		select {
 		case <-servicesCheckingTicker.C:
 			if !areServicesBeingChecked {
@@ -75,13 +64,16 @@ func main()  {
 				areServicesBeingChecked = true
 			}
 		case <-configCheckingTicker.C:
-			go reloadConfig(configChannel)
+			go func() {
+				reloadedConfig, err := dynamoLoader.ReloadConfig()
+				if err == nil {
+					configChannel<- reloadedConfig
+				}
+			}()
 		case newConfig := <-configChannel:
 			checkerConfig = newConfig
 		case <-checkerChannel:
 			areServicesBeingChecked = false
-		case <-signalsChannel:
-			stopProgram = true
 		}
 	}
 }

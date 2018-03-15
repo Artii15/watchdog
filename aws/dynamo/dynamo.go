@@ -6,17 +6,19 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"watchdog/checker"
+	"watchdog/loggers"
 )
 
 type ConfigLoader struct {
 	dynamoService *dynamodb.DynamoDB
 	tableName string
 	primaryKey string
+	loggersObject *loggers.Loggers
 }
 
-func New(awsSession client.ConfigProvider, tableName, primaryKey string) *ConfigLoader {
+func New(awsSession client.ConfigProvider, tableName, primaryKey string, loggersObject *loggers.Loggers) *ConfigLoader {
 	dynamoDbService := dynamodb.New(awsSession)
-	return &ConfigLoader{dynamoService:dynamoDbService, tableName:tableName, primaryKey:primaryKey}
+	return &ConfigLoader{dynamoService:dynamoDbService, tableName:tableName, primaryKey:primaryKey, loggersObject:loggersObject}
 }
 
 func (loader *ConfigLoader) ReloadConfig() (*checker.Config, error) {
@@ -31,10 +33,12 @@ func (loader *ConfigLoader) ReloadConfig() (*checker.Config, error) {
 
 	result,err := loader.dynamoService.GetItem(input)
 	if err == nil {
+		loader.loggersObject.Error.Println("Could not load new configuration from dynamo db", err)
 		var checkerConfig checker.Config
 		dynamodbattribute.UnmarshalMap(result.Item, &checkerConfig)
 		return &checkerConfig, nil
 	} else {
+		loader.loggersObject.Info.Println("New configuration fetched from dynamoDb")
 		return nil, err
 	}
 }
