@@ -16,6 +16,7 @@ func LoadProgramSettings() *ProgramSettings {
 	dynamoDbTableName := flag.String("dynamo-table", "", "Dynamo DB table name")
 	dynamoDbPrimaryKey := flag.String("dynamo-key", "", "Primary key of configuration in Dynamo DB")
 	snsTopic := flag.String("sns", "", "SnS topic name")
+	flag.Parse()
 
 	return &ProgramSettings{
 		LogfileLocation: *logfileLocation,
