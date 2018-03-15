@@ -10,28 +10,44 @@ type checker struct {
 	isLastCheckingFinished bool
 	snsNotifier *sns.Notifier
 	loggersObject *loggers.Loggers
+	servicesDeadDuringPrevChecks map[string]bool
 }
 
 func New(snsNotifier *sns.Notifier, loggersObject *loggers.Loggers) *checker {
-	return &checker{isLastCheckingFinished: true, snsNotifier:snsNotifier, loggersObject: loggersObject}
+	return &checker{
+		isLastCheckingFinished: true,
+		snsNotifier:snsNotifier,
+		loggersObject: loggersObject,
+		servicesDeadDuringPrevChecks: make(map[string]bool),
+	}
 }
 
 func (checker *checker) Check(config *Config) {
 	if checker.isLastCheckingFinished {
 		checker.isLastCheckingFinished = false
-		//deadServices := checker.getDeadServices(config)
+		newDeadServices := checker.getDeadServices(config)
 		checker.isLastCheckingFinished = true
 	}
 }
 
 func (checker *checker) getDeadServices(config *Config) []string {
-	deadServices := make([]string, len(config.ListOfServices))
+	newDeadServices := make([]string, len(config.ListOfServices))
 	for _, serviceName := range config.ListOfServices {
-		if !isServiceRunning(serviceName) {
-			deadServices = append(deadServices, serviceName)
+		if isServiceRunning(serviceName) {
+			checker.servicesDeadDuringPrevChecks[serviceName] = false
+		} else {
+			if checker.isNewDeadService(serviceName) {
+				newDeadServices = append(newDeadServices, serviceName)
+			}
+			checker.servicesDeadDuringPrevChecks[serviceName] = true
 		}
 	}
-	return deadServices
+	return newDeadServices
+}
+
+func (checker *checker) isNewDeadService(serviceName string) bool {
+	wasDead, wasChecked := checker.servicesDeadDuringPrevChecks[serviceName]
+	return !wasChecked || !wasDead
 }
 
 func restartAndCheckIfRunning(serviceName string) bool {
