@@ -20,8 +20,9 @@ func init() {
 	//TODO verify settings and log errors
 
 	awsSession, sessionError := session.NewSession()
-	if sessionError == nil {
+	if sessionError != nil {
 		loggersObject.Error.Println("Could not create aws session", sessionError)
+		panic("Exiting. No AWS session")
 	} else {
 		dynamoLoader = dynamo.New(awsSession, programSettings.DynamoDbTableName, programSettings.DynamoDbPrimaryKey)
 		snsNotifier = sns.New(awsSession, programSettings.SnsTopic)
