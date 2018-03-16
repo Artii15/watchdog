@@ -1,14 +1,14 @@
 package main
 
 import (
-	"watchdog/config"
-	"watchdog/loggers"
-	"watchdog/aws/dynamo"
-	"watchdog/aws/sns"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"time"
-	"watchdog/checker"
 	"os"
+	"github.com/Artii15/watchdog/checker"
+	"github.com/Artii15/watchdog/config"
+	"github.com/Artii15/watchdog/loggers"
+	"github.com/Artii15/watchdog/aws/dynamo"
+	"github.com/Artii15/watchdog/aws/sns"
 )
 
 const configRefreshingIntervalInMinutes = 15

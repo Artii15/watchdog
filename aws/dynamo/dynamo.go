@@ -5,8 +5,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"watchdog/checker"
-	"watchdog/loggers"
+	"github.com/Artii15/watchdog/loggers"
+	"github.com/Artii15/watchdog/checker"
 )
 
 type ConfigLoader struct {

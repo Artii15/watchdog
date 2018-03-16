@@ -2,11 +2,11 @@ package checker
 
 import (
 	"os/exec"
-	"watchdog/aws/sns"
-	"watchdog/loggers"
 	"fmt"
 	"time"
 	"sync"
+	"github.com/Artii15/watchdog/loggers"
+	"github.com/Artii15/watchdog/aws/sns"
 )
 
 type checker struct {
