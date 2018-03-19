@@ -49,14 +49,12 @@ func New(config Config) (*Logs, error) {
 	logs.config = config
 	logs.messagesChannel = make(chan Message)
 
-	logger, currentLogfile, err := logs.setupLogger(config.logsDirPath)
+	err := logs.setupLogger()
 	if err != nil {
 		return nil, err
 	}
-	logs.logger = logger
-	logs.currentLogfile = currentLogfile
 
-	logfileSize, err := getFileSize(currentLogfile)
+	logfileSize, err := getFileSize(logs.currentLogfile)
 	if err != nil {
 		return nil, err
 	}
@@ -67,12 +65,16 @@ func New(config Config) (*Logs, error) {
 	return &logs, nil
 }
 
-func (logs *Logs) setupLogger(logsDirPath string) (*log.Logger, *os.File, error) {
-	logfile, err := logs.openLogfile(logsDirPath)
+func (logs *Logs) setupLogger() error {
+	logfile, err := logs.openLogfile(logs.config.logsDirPath)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	return createLogger(logfile, ""), logfile, nil
+	logger := createLogger(logfile, "")
+
+	logs.logger = logger
+	logs.currentLogfile = logfile
+	return nil
 }
 
 func (logs *Logs) openLogfile(directoryPath string) (*os.File, error) {
@@ -81,7 +83,11 @@ func (logs *Logs) openLogfile(directoryPath string) (*os.File, error) {
 }
 
 func (logs *Logs) logfilePath(fileName string) string {
-	normalizedDirPath := strings.TrimRight(logs.config.logsDirPath, "/")
+	return filePath(logs.config.logsDirPath, fileName)
+}
+
+func filePath(dirPath, fileName string) string {
+	normalizedDirPath := strings.TrimRight(dirPath, "/")
 	return strings.Join([]string{normalizedDirPath, fileName}, "/")
 }
 
@@ -123,28 +129,35 @@ func (logs *Logs) updatedLogFileSize(message string) int64 {
 	return logs.currentLogFileSize + int64(len(message))
 }
 
-func (logs *Logs) changeLogfileIfTooBig(fileSize int64) {
-	if fileSize > logs.config.logFileSplitThreshold {
-
-
-		//TODO send file to S3 asynchronously
-		logCopy, err := ioutil.TempFile(logs.config.logsDirPath, "logs")
-		if err != nil {
-			//TODO handle send file error
-		}
-		_, err = io.Copy(logCopy, logs.currentLogfile)
-		if err != nil {
-			//TODO handle copy creation error
-		}
-		go sendToS3(logCopy)
-
-		logs.currentLogfile.Truncate(0)
-		logs.currentLogFileSize = 0
+func (logs *Logs) changeLogfileIfTooBig(fileSize int64) error {
+	if fileSize < logs.config.logFileSplitThreshold {
+		return nil
 	}
+
+	archivalLogFileName, err := logs.getNextLogfileName()
+	if err != nil {
+		return err
+	}
+
+	pathToArchivalLogFile := filePath(logs.config.logsDirPath, archivalLogFileName)
+	err = os.Rename(logs.logfilePath(logfileBaseName), pathToArchivalLogFile)
+	if err != nil {
+		return err
+	}
+
+	logs.currentLogfile.Close()
+	logs.currentLogFileSize = 0
+	if err = logs.setupLogger(); err != nil {
+		return err
+	}
+
+	go logs.sendToS3(archivalLogFileName)
+
+	return nil
 }
 
-func (logs *Logs) getNextLogfileName(directoryPath string) (string, error) {
-	logfileNumber, err := logs.getNextLogNumber(directoryPath)
+func (logs *Logs) getNextLogfileName() (string, error) {
+	logfileNumber, err := logs.getNextLogNumber(logs.config.logsDirPath)
 	if err != nil {
 		return "", err
 	}
@@ -169,6 +182,5 @@ func (logs *Logs) getNextLogNumber(directoryPath string) (int, error) {
 	return biggestLogNumber+1, nil
 }
 
-func sendToS3(file *os.File) {
-	//TODO
+func (logs *Logs) sendToS3(pathToFile string) {
 }
