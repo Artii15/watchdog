@@ -66,7 +66,7 @@ func (checker *checker) handleNewDeadServices(deadServices []string, config *Con
 
 func (checker *checker) logServiceFailure(serviceName string)  {
 	message := fmt.Sprintf("Service %s is now inactive", serviceName)
-	checker.loggersObject.Warning.Println(message)
+	checker.loggersObject.Warning(message)
 	checker.snsNotifier.Notify(message)
 }
 
@@ -75,15 +75,15 @@ func (checker *checker) tryToRecoverService(serviceName string, config *Config) 
 	attemptsDone := 0
 	for ; attemptsDone < config.NumOfAttempts && !isServiceActive; attemptsDone++ {
 		currentAttemptNo := attemptsDone + 1
-		checker.loggersObject.Info.Println("Attempting to restart", serviceName, "Attempt", currentAttemptNo)
+		checker.loggersObject.Info("Attempting to restart", serviceName, "Attempt", currentAttemptNo)
 		isServiceActive = restartAndCheckIfRunning(serviceName)
 		if isServiceActive {
 			successMessage := fmt.Sprintf("Service %s successfully restarted after %d attempts", serviceName, currentAttemptNo)
-			checker.loggersObject.Info.Println(successMessage)
+			checker.loggersObject.Info(successMessage)
 			checker.snsNotifier.Notify(successMessage)
 		} else {
 			failureMessage := fmt.Sprintf("Service %s still not active after %d restarts", serviceName, currentAttemptNo)
-			checker.loggersObject.Warning.Println(failureMessage)
+			checker.loggersObject.Warning(failureMessage)
 			if currentAttemptNo == config.NumOfAttempts {
 				checker.snsNotifier.Notify(failureMessage)
 			} else {

@@ -1,10 +1,10 @@
 package loggers
 
 type Message struct {
-	Content string
+	Content []interface{}
 	Prefix string
 }
 
-func (message *Message) New(content, prefix string) Message {
+func (message *Message) New(prefix string, content ...interface{}) Message {
 	return Message{Content: content, Prefix: prefix}
 }

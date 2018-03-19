@@ -3,12 +3,12 @@ package main
 import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"time"
-	"os"
 	"github.com/Artii15/watchdog/checker"
 	"github.com/Artii15/watchdog/config"
 	"github.com/Artii15/watchdog/loggers"
 	"github.com/Artii15/watchdog/aws/dynamo"
 	"github.com/Artii15/watchdog/aws/sns"
+	"fmt"
 )
 
 const configRefreshingIntervalInMinutes = 15
@@ -16,31 +16,28 @@ const configRefreshingIntervalInMinutes = 15
 func main()  {
 	programSettings := config.LoadProgramSettings()
 
-	var logfile, logfileErr = os.OpenFile(programSettings.LogfileLocation, os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0644)
-	var loggersObject *loggers.Logs
-	if logfileErr == nil {
-		loggersObject = loggers.New(logfile)
-		defer logfile.Close()
-	} else {
-		loggersObject = loggers.New(os.Stdout)
-		loggersObject.Warning.Println("Could not open", logfile, "using stdout instead")
+	dummyConfig := loggers.Config{LogsDirPath:"/var/log", LogFileSplitThreshold: 128}
+	logs, err := loggers.New(dummyConfig)
+	if err != nil {
+		fmt.Println("Could not create logs. Exiting")
+		return
 	}
 
 	awsSession, sessionError := session.NewSession()
 	var snsNotifier *sns.Notifier
 	var dynamoLoader *dynamo.ConfigLoader
 	if sessionError != nil {
-		loggersObject.Error.Println("Could not create aws session", sessionError)
+		logs.Error("Could not create aws session", sessionError)
 		panic("Exiting. No AWS session")
 	} else {
-		dynamoLoader = dynamo.New(awsSession, programSettings.DynamoDbTableName, programSettings.DynamoDbPrimaryKey, loggersObject)
+		dynamoLoader = dynamo.New(awsSession, programSettings.DynamoDbTableName, programSettings.DynamoDbPrimaryKey, logs)
 		snsNotifier = sns.New(awsSession, programSettings.SnsTopic)
 	}
 
-	loggersObject.Info.Println("Fetching config from dynamoDb")
+	logs.Info("Fetching config from dynamoDb")
 	checkerConfig, dynamoErr := dynamoLoader.ReloadConfig()
 	if dynamoErr != nil {
-		loggersObject.Error.Println("Could not fetch config from dynamoDb", dynamoErr)
+		logs.Error("Could not fetch config from dynamoDb", dynamoErr)
 		panic("Retrieving information about configuration was not possible")
 	}
 
@@ -53,7 +50,7 @@ func main()  {
 	configChannel := make(chan *checker.Config)
 	checkerChannel := make(chan bool)
 
-	servicesChecker := checker.New(snsNotifier, loggersObject, checkerChannel)
+	servicesChecker := checker.New(snsNotifier, logs, checkerChannel)
 	go servicesChecker.Check(checkerConfig)
 	areServicesBeingChecked := true
 	for {

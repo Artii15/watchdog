@@ -32,16 +32,16 @@ func (logs *Logs) Close() {
 	close(logs.messagesChannel)
 }
 
-func (logs *Logs) Error(message string)  {
-	logs.messagesChannel <- Message{Prefix: errorPrefix, Content: message}
+func (logs *Logs) Error(messages ...interface{})  {
+	logs.messagesChannel <- Message{Prefix: errorPrefix, Content: messages}
 }
 
-func (logs *Logs) Info(message string)  {
-	logs.messagesChannel <- Message{Prefix: infoPrefix, Content: message}
+func (logs *Logs) Info(messages ...interface{})  {
+	logs.messagesChannel <- Message{Prefix: infoPrefix, Content: messages}
 }
 
-func (logs *Logs) Warning(message string)  {
-	logs.messagesChannel <- Message{Prefix: warningPrefix, Content: message}
+func (logs *Logs) Warning(messages ...interface{})  {
+	logs.messagesChannel <- Message{Prefix: warningPrefix, Content: messages}
 }
 
 func New(config Config) (*Logs, error) {
@@ -66,7 +66,7 @@ func New(config Config) (*Logs, error) {
 }
 
 func (logs *Logs) setupLogger() error {
-	logfile, err := logs.openLogfile(logs.config.logsDirPath)
+	logfile, err := logs.openLogfile(logs.config.LogsDirPath)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (logs *Logs) openLogfile(directoryPath string) (*os.File, error) {
 }
 
 func (logs *Logs) logfilePath(fileName string) string {
-	return filePath(logs.config.logsDirPath, fileName)
+	return filePath(logs.config.LogsDirPath, fileName)
 }
 
 func filePath(dirPath, fileName string) string {
@@ -119,18 +119,19 @@ func (logs *Logs) closeLogfile() {
 
 func (logs *Logs) log(message Message)  {
 	logs.logger.SetPrefix(message.Prefix)
-	logs.logger.Println(message.Content)
+	logs.logger.Println(message.Content...)
 
-	logs.currentLogFileSize = logs.updatedLogFileSize(message.Content)
+	logs.currentLogFileSize = logs.updatedLogFileSize(message.Content...)
 	logs.changeLogfileIfTooBig(logs.currentLogFileSize)
 }
 
-func (logs *Logs) updatedLogFileSize(message string) int64 {
-	return logs.currentLogFileSize + int64(len(message))
+func (logs *Logs) updatedLogFileSize(messages ...interface{}) int64 {
+	//TODO calculate summary length of messages converted to string
+	return logs.currentLogFileSize + int64(len(messages))
 }
 
 func (logs *Logs) changeLogfileIfTooBig(fileSize int64) error {
-	if fileSize < logs.config.logFileSplitThreshold {
+	if fileSize < logs.config.LogFileSplitThreshold {
 		return nil
 	}
 
@@ -139,7 +140,7 @@ func (logs *Logs) changeLogfileIfTooBig(fileSize int64) error {
 		return err
 	}
 
-	pathToArchivalLogFile := filePath(logs.config.logsDirPath, archivalLogFileName)
+	pathToArchivalLogFile := filePath(logs.config.LogsDirPath, archivalLogFileName)
 	err = os.Rename(logs.logfilePath(logfileBaseName), pathToArchivalLogFile)
 	if err != nil {
 		return err
@@ -157,7 +158,7 @@ func (logs *Logs) changeLogfileIfTooBig(fileSize int64) error {
 }
 
 func (logs *Logs) getNextLogfileName() (string, error) {
-	logfileNumber, err := logs.getNextLogNumber(logs.config.logsDirPath)
+	logfileNumber, err := logs.getNextLogNumber(logs.config.LogsDirPath)
 	if err != nil {
 		return "", err
 	}
@@ -165,7 +166,7 @@ func (logs *Logs) getNextLogfileName() (string, error) {
 }
 
 func (logs *Logs) getNextLogNumber(directoryPath string) (int, error) {
-	files, err := ioutil.ReadDir(logs.config.logsDirPath)
+	files, err := ioutil.ReadDir(logs.config.LogsDirPath)
 	if err != nil {
 		return 0, err
 	}

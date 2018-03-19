@@ -33,12 +33,12 @@ func (loader *ConfigLoader) ReloadConfig() (*checker.Config, error) {
 
 	result,err := loader.dynamoService.GetItem(input)
 	if err == nil {
-		loader.loggersObject.Info.Println("New configuration fetched from dynamoDb")
+		loader.loggersObject.Info("New configuration fetched from dynamoDb")
 		var checkerConfig checker.Config
 		dynamodbattribute.UnmarshalMap(result.Item, &checkerConfig)
 		return &checkerConfig, nil
 	} else {
-		loader.loggersObject.Error.Println("Could not load new configuration from dynamo db", err)
+		loader.loggersObject.Error("Could not load new configuration from dynamo db", err)
 		return nil, err
 	}
 }
