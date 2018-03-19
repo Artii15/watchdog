@@ -62,7 +62,7 @@ func (logs *Logs) runWorker()  {
 	defer logs.closeLogfile()
 
 	for message := range logs.messagesChannel {
-
+		logs.log(message)
 	}
 }
 
@@ -72,7 +72,7 @@ func (logs *Logs) closeLogfile() {
 	}
 }
 
-func (logs *Logs) logMessage(message Message)  {
+func (logs *Logs) log(message Message)  {
 	logs.updateLogFileSize(message.Content)
 
 	logs.logger.SetPrefix(message.Prefix)
