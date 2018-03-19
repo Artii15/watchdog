@@ -49,7 +49,7 @@ func New(config Config) (*Logs, error) {
 	logs.config = config
 	logs.messagesChannel = make(chan Message)
 
-	logger, currentLogfile, err := setupLogger(config.logsDirPath)
+	logger, currentLogfile, err := logs.setupLogger(config.logsDirPath)
 	if err != nil {
 		return nil, err
 	}
@@ -67,18 +67,22 @@ func New(config Config) (*Logs, error) {
 	return &logs, nil
 }
 
-func setupLogger(logsDirPath string) (*log.Logger, *os.File, error) {
-	logfile, err := openLogfile(logsDirPath)
+func (logs *Logs) setupLogger(logsDirPath string) (*log.Logger, *os.File, error) {
+	logfile, err := logs.openLogfile(logsDirPath)
 	if err != nil {
 		return nil, nil, err
 	}
 	return createLogger(logfile, ""), logfile, nil
 }
 
-func openLogfile(directoryPath string) (*os.File, error) {
-	normalizedDirPath := strings.TrimRight(directoryPath, "/")
-	filePath := strings.Join([]string{normalizedDirPath, logfileBaseName}, "/")
+func (logs *Logs) openLogfile(directoryPath string) (*os.File, error) {
+	filePath := logs.logfilePath(logfileBaseName)
 	return os.OpenFile(filePath, os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0644)
+}
+
+func (logs *Logs) logfilePath(fileName string) string {
+	normalizedDirPath := strings.TrimRight(logs.config.logsDirPath, "/")
+	return strings.Join([]string{normalizedDirPath, fileName}, "/")
 }
 
 func createLogger(writer io.Writer, prefix string) *log.Logger {
