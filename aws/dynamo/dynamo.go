@@ -13,10 +13,10 @@ type ConfigLoader struct {
 	dynamoService *dynamodb.DynamoDB
 	tableName string
 	primaryKey string
-	loggersObject *loggers.Loggers
+	loggersObject *loggers.Logs
 }
 
-func New(awsSession client.ConfigProvider, tableName, primaryKey string, loggersObject *loggers.Loggers) *ConfigLoader {
+func New(awsSession client.ConfigProvider, tableName, primaryKey string, loggersObject *loggers.Logs) *ConfigLoader {
 	dynamoDbService := dynamodb.New(awsSession)
 	return &ConfigLoader{dynamoService:dynamoDbService, tableName:tableName, primaryKey:primaryKey, loggersObject:loggersObject}
 }

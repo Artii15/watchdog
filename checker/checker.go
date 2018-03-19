@@ -11,12 +11,12 @@ import (
 
 type checker struct {
 	snsNotifier *sns.Notifier
-	loggersObject *loggers.Loggers
+	loggersObject *loggers.Logs
 	servicesDeadDuringPrevChecks map[string]bool
 	responseChannel chan<- bool
 }
 
-func New(snsNotifier *sns.Notifier, loggersObject *loggers.Loggers, responseChannel chan<- bool) *checker {
+func New(snsNotifier *sns.Notifier, loggersObject *loggers.Logs, responseChannel chan<- bool) *checker {
 	return &checker{
 		snsNotifier:snsNotifier,
 		loggersObject: loggersObject,
@@ -55,7 +55,7 @@ func (checker *checker) handleNewDeadServices(deadServices []string, config *Con
 	waitGroup := &sync.WaitGroup{}
 	for _, serviceName := range deadServices {
 		waitGroup.Add(1)
-		func() {
+		go func() {
 			checker.logServiceFailure(serviceName)
 			checker.tryToRecoverService(serviceName, config)
 			waitGroup.Done()

@@ -17,7 +17,7 @@ func main()  {
 	programSettings := config.LoadProgramSettings()
 
 	var logfile, logfileErr = os.OpenFile(programSettings.LogfileLocation, os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0644)
-	var loggersObject *loggers.Loggers
+	var loggersObject *loggers.Logs
 	if logfileErr == nil {
 		loggersObject = loggers.New(logfile)
 		defer logfile.Close()

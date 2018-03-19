@@ -19,7 +19,7 @@ func New(awsSession client.ConfigProvider, topic string) *Notifier {
 func (notifier *Notifier) Notify(message string) error {
 	snsServiceParams := &sns.PublishInput{
 		Message: aws.String(message),
-		TopicArn: aws.String("arn:aws:sns:us-west-2:632826021673:akowalski-watchdog-topic"),
+		TopicArn: aws.String(notifier.topic),
 	}
 
 	_, err := notifier.snsService.Publish(snsServiceParams)
