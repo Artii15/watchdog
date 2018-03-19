@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 	"io/ioutil"
-	"os/user"
 )
 
 const (
@@ -21,7 +20,7 @@ const logfileBaseName = "watchdog.log"
 type Logs struct {
 	config Config
 	messagesChannel chan Message
-	currentLogFileSize int
+	currentLogFileSize int64
 	logger *log.Logger
 	currentLogfile *os.File
 }
@@ -46,7 +45,6 @@ func New(config Config) (*Logs, error) {
 	var logs Logs
 	logs.config = config
 	logs.messagesChannel = make(chan Message)
-	logs.currentLogFileSize = 0
 
 	logger, currentLogfile, err := setupLogger(config.logsDirPath)
 	if err != nil {
@@ -54,6 +52,12 @@ func New(config Config) (*Logs, error) {
 	}
 	logs.logger = logger
 	logs.currentLogfile = currentLogfile
+
+	logfileSize, err := getFileSize(currentLogfile)
+	if err != nil {
+		return nil, err
+	}
+	logs.currentLogFileSize = logfileSize
 
 	go logs.runWorker()
 
@@ -76,6 +80,14 @@ func openLogfile(directoryPath string) (*os.File, error) {
 
 func createLogger(writer io.Writer, prefix string) *log.Logger {
 	return log.New(writer, prefix, log.Ldate|log.Ltime)
+}
+
+func getFileSize(file *os.File) (int64, error) {
+	stat, err := file.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return stat.Size(), err
 }
 
 func (logs *Logs) runWorker() {
@@ -104,8 +116,8 @@ func (logs *Logs) updatedLogFileSize(message string) int {
 	return logs.currentLogFileSize + len(message)
 }
 
-func (logs *Logs) changeLogfileIfTooBig(fileSize int)  {
-	if logs.currentLogFileSize > logs.config.logFileMaxSize {
+func (logs *Logs) changeLogfileIfTooBig(fileSize int) {
+	if fileSize > logs.config.logFileMaxSize {
 		//TODO send file to S3 asynchronously
 		logCopy, err := ioutil.TempFile(logs.config.logsDirPath, "logs")
 		if err != nil {
