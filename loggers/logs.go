@@ -22,8 +22,24 @@ type Logs struct {
 	config Config
 	messagesChannel chan Message
 	currentLogFileSize int
-	currentLogfile *os.File
 	logger *log.Logger
+	currentLogfile *os.File
+}
+
+func (logs *Logs) Close() {
+	close(logs.messagesChannel)
+}
+
+func (logs *Logs) Error(message string)  {
+	logs.messagesChannel <- Message{Prefix: errorPrefix, Content: message}
+}
+
+func (logs *Logs) Info(message string)  {
+	logs.messagesChannel <- Message{Prefix: infoPrefix, Content: message}
+}
+
+func (logs *Logs) Warning(message string)  {
+	logs.messagesChannel <- Message{Prefix: warningPrefix, Content: message}
 }
 
 func New(config Config) (*Logs, error) {
@@ -62,7 +78,7 @@ func createLogger(writer io.Writer, prefix string) *log.Logger {
 	return log.New(writer, prefix, log.Ldate|log.Ltime)
 }
 
-func (logs *Logs) runWorker()  {
+func (logs *Logs) runWorker() {
 	defer logs.closeLogfile()
 
 	for message := range logs.messagesChannel {
@@ -77,17 +93,18 @@ func (logs *Logs) closeLogfile() {
 }
 
 func (logs *Logs) log(message Message)  {
-	logs.updateLogFileSize(message.Content)
+	logs.currentLogFileSize = logs.updatedLogFileSize(message.Content)
+	logs.changeLogfileIfTooBig(logs.currentLogFileSize)
 
 	logs.logger.SetPrefix(message.Prefix)
 	logs.logger.Println(message.Content)
 }
 
-func (logs *Logs) updateLogFileSize(message string)  {
-	logs.currentLogFileSize = logs.currentLogFileSize + len(message)
+func (logs *Logs) updatedLogFileSize(message string) int {
+	return logs.currentLogFileSize + len(message)
 }
 
-func (logs *Logs) changeLogFileIfTooBig()  {
+func (logs *Logs) changeLogfileIfTooBig(fileSize int)  {
 	if logs.currentLogFileSize > logs.config.logFileMaxSize {
 		//TODO send file to S3 asynchronously
 		logCopy, err := ioutil.TempFile(logs.config.logsDirPath, "logs")
@@ -107,20 +124,4 @@ func (logs *Logs) changeLogFileIfTooBig()  {
 
 func sendToS3(file *os.File) {
 	//TODO
-}
-
-func (logs *Logs) Close() {
-	close(logs.messagesChannel)
-}
-
-func (logs *Logs) Error(message string)  {
-	logs.messagesChannel <- Message{Prefix: errorPrefix, Content: message}
-}
-
-func (logs *Logs) Info(message string)  {
-	logs.messagesChannel <- Message{Prefix: infoPrefix, Content: message}
-}
-
-func (logs *Logs) Warning(message string)  {
-	logs.messagesChannel <- Message{Prefix: warningPrefix, Content: message}
 }
