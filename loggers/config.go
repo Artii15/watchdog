@@ -1,6 +1,6 @@
 package loggers
 
 type Config struct {
-	logsDirPath        string
-	logFileMaxSize     int
+	logsDirPath           string
+	logFileSplitThreshold int64
 }

@@ -6,6 +6,9 @@ import (
 	"os"
 	"strings"
 	"io/ioutil"
+	"regexp"
+	"fmt"
+	"strconv"
 )
 
 const (
@@ -105,19 +108,21 @@ func (logs *Logs) closeLogfile() {
 }
 
 func (logs *Logs) log(message Message)  {
-	logs.currentLogFileSize = logs.updatedLogFileSize(message.Content)
-	logs.changeLogfileIfTooBig(logs.currentLogFileSize)
-
 	logs.logger.SetPrefix(message.Prefix)
 	logs.logger.Println(message.Content)
+
+	logs.currentLogFileSize = logs.updatedLogFileSize(message.Content)
+	logs.changeLogfileIfTooBig(logs.currentLogFileSize)
 }
 
-func (logs *Logs) updatedLogFileSize(message string) int {
-	return logs.currentLogFileSize + len(message)
+func (logs *Logs) updatedLogFileSize(message string) int64 {
+	return logs.currentLogFileSize + int64(len(message))
 }
 
-func (logs *Logs) changeLogfileIfTooBig(fileSize int) {
-	if fileSize > logs.config.logFileMaxSize {
+func (logs *Logs) changeLogfileIfTooBig(fileSize int64) {
+	if fileSize > logs.config.logFileSplitThreshold {
+
+
 		//TODO send file to S3 asynchronously
 		logCopy, err := ioutil.TempFile(logs.config.logsDirPath, "logs")
 		if err != nil {
@@ -132,6 +137,32 @@ func (logs *Logs) changeLogfileIfTooBig(fileSize int) {
 		logs.currentLogfile.Truncate(0)
 		logs.currentLogFileSize = 0
 	}
+}
+
+func (logs *Logs) getNextLogfileName(directoryPath string) (string, error) {
+	logfileNumber, err := logs.getNextLogNumber(directoryPath)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s.%d", logfileBaseName, logfileNumber), nil
+}
+
+func (logs *Logs) getNextLogNumber(directoryPath string) (int, error) {
+	files, err := ioutil.ReadDir(logs.config.logsDirPath)
+	if err != nil {
+		return 0, err
+	}
+    regex := regexp.MustCompile(logfileBaseName + "\\.([0-9]+)")
+
+    biggestLogNumber := 0
+	for _, file := range files {
+		match := regex.FindStringSubmatch(file.Name())
+		logfileNumber, err := strconv.Atoi(match[1])
+		if err != nil && biggestLogNumber < logfileNumber {
+			biggestLogNumber = logfileNumber
+		}
+	}
+	return biggestLogNumber+1, nil
 }
 
 func sendToS3(file *os.File) {
