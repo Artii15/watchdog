@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"io/ioutil"
+	"os/user"
 )
 
 const (
@@ -20,32 +21,35 @@ const logfileBaseName = "watchdog.log"
 type Logs struct {
 	config Config
 	messagesChannel chan Message
+	currentLogFileSize int
 	currentLogfile *os.File
 	logger *log.Logger
-	currentLogFileSize int
 }
 
-func New(config Config) *Logs {
+func New(config Config) (*Logs, error) {
 	var logs Logs
 	logs.config = config
 	logs.messagesChannel = make(chan Message)
 	logs.currentLogFileSize = 0
-	logs.setupLogger()
+
+	logger, currentLogfile, err := setupLogger(config.logsDirPath)
+	if err != nil {
+		return nil, err
+	}
+	logs.logger = logger
+	logs.currentLogfile = currentLogfile
 
 	go logs.runWorker()
 
-	return &logs
+	return &logs, nil
 }
 
-func (logs *Logs) setupLogger() *log.Logger {
-	var logWriter io.Writer
-	logfile, err := openLogfile(logs.config.logsDirPath)
-	if err == nil {
-		logs.currentLogfile = logfile
-		logWriter = logfile
+func setupLogger(logsDirPath string) (*log.Logger, *os.File, error) {
+	logfile, err := openLogfile(logsDirPath)
+	if err != nil {
+		return nil, nil, err
 	}
-	// todo return an error
-	logs.logger = createLogger(logWriter, "")
+	return createLogger(logfile, ""), logfile, nil
 }
 
 func openLogfile(directoryPath string) (*os.File, error) {
