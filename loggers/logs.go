@@ -171,16 +171,23 @@ func (logs *Logs) getNextLogNumber(directoryPath string) (int, error) {
 	}
     regex := regexp.MustCompile(logfileBaseName + "\\.([0-9]+)")
 
-    biggestLogNumber := 0
+    highestLogNumber := 0
 	for _, file := range files {
 		match := regex.FindStringSubmatch(file.Name())
 		logfileNumber, err := strconv.Atoi(match[1])
-		if err != nil && biggestLogNumber < logfileNumber {
-			biggestLogNumber = logfileNumber
+		if err != nil && highestLogNumber < logfileNumber {
+			highestLogNumber = logfileNumber
 		}
 	}
-	return biggestLogNumber+1, nil
+	return highestLogNumber + 1, nil
 }
 
 func (logs *Logs) sendToS3(pathToFile string) {
+	file, err := os.OpenFile(pathToFile, os.O_RDONLY, 0400)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	// TODO call s3 api here
 }
