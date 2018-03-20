@@ -5,6 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/client"
 	"os"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/aws"
 )
 
 type Uploader struct {
@@ -20,10 +21,9 @@ func New(awsSession client.ConfigProvider, bucketName string) *Uploader {
 }
 
 func (uploader *Uploader) Upload(file *os.File) error {
-	objectKey := file.Name()
 	_, err := uploader.s3Uploader.Upload(&s3manager.UploadInput{
-		Bucket: &uploader.bucketName,
-		Key: &objectKey,
+		Bucket: aws.String(uploader.bucketName),
+		Key: aws.String(file.Name()),
 		Body: file,
 	})
 	return err
