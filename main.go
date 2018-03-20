@@ -16,8 +16,7 @@ const configRefreshingIntervalInMinutes = 15
 func main()  {
 	programSettings := config.LoadProgramSettings()
 
-	dummyConfig := loggers.Config{LogsDirPath:"/home/artur/log", LogfileSplitThreshold: 128}
-	logs, err := loggers.New(dummyConfig)
+	logs, err := loggers.New(programSettings.LoggersConfig)
 	if err != nil {
 		fmt.Println("Could not create logs. Exiting")
 		return
