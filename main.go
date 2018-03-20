@@ -1,14 +1,15 @@
 package main
 
 import (
-	"github.com/aws/aws-sdk-go/aws/session"
 	"time"
 	"github.com/Artii15/watchdog/checker"
 	"github.com/Artii15/watchdog/config"
 	"github.com/Artii15/watchdog/loggers"
+	"fmt"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/Artii15/watchdog/aws/s3"
 	"github.com/Artii15/watchdog/aws/dynamo"
 	"github.com/Artii15/watchdog/aws/sns"
-	"fmt"
 )
 
 const configRefreshingIntervalInMinutes = 15
@@ -25,12 +26,15 @@ func main()  {
 	awsSession, sessionError := session.NewSession()
 	var snsNotifier *sns.Notifier
 	var dynamoLoader *dynamo.ConfigLoader
+	var s3Uploader *s3.Uploader
 	if sessionError != nil {
 		logs.Error("Could not create aws session", sessionError)
 		panic("Exiting. No AWS session")
 	} else {
 		dynamoLoader = dynamo.New(awsSession, programSettings.DynamoDbTableName, programSettings.DynamoDbPrimaryKey, logs)
 		snsNotifier = sns.New(awsSession, programSettings.SnsTopic)
+		s3Uploader = s3.New(awsSession, programSettings.S3BucketName)
+		logs.SetUploader(s3Uploader)
 	}
 
 	logs.Info("Fetching config from dynamoDb")

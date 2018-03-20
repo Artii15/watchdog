@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"fmt"
 	"strconv"
+	"github.com/Artii15/watchdog/aws/s3"
 )
 
 const (
@@ -21,11 +22,11 @@ const logfileBaseName = "watchdog.log"
 
 
 type Logs struct {
-	config Config
+	config          Config
 	messagesChannel chan Message
-	currentLogFileSize int64
-	logger *log.Logger
-	currentLogfile *os.File
+	logger          *log.Logger
+	currentLogfile  *os.File
+	uploader        *s3.Uploader
 }
 
 func (logs *Logs) Close() {
@@ -53,16 +54,15 @@ func New(config Config) (*Logs, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	logfileSize, err := getFileSize(logs.currentLogfile)
-	if err != nil {
-		return nil, err
-	}
-	logs.currentLogFileSize = logfileSize
+	logs.uploader = nil
 
 	go logs.runWorker()
 
 	return &logs, nil
+}
+
+func (logs *Logs) SetUploader(uploader *s3.Uploader)  {
+	logs.uploader = uploader
 }
 
 func (logs *Logs) setupLogger() error {
@@ -96,14 +96,6 @@ func createLogger(writer io.Writer, prefix string) *log.Logger {
 	return log.New(writer, prefix, log.Ldate|log.Ltime)
 }
 
-func getFileSize(file *os.File) (int64, error) {
-	stat, err := file.Stat()
-	if err != nil {
-		return 0, err
-	}
-	return stat.Size(), err
-}
-
 func (logs *Logs) runWorker() {
 	defer logs.closeLogfile()
 
@@ -122,13 +114,15 @@ func (logs *Logs) log(message Message)  {
 	logs.logger.SetPrefix(message.Prefix)
 	logs.logger.Println(message.Content...)
 
-	logs.currentLogFileSize = logs.updatedLogFileSize(message.Content...)
-	logs.changeLogfileIfTooBig(logs.currentLogFileSize)
+	logs.changeLogfileIfTooBig(logs.logfileSize())
 }
 
-func (logs *Logs) updatedLogFileSize(messages ...interface{}) int64 {
-	//TODO calculate summary length of messages converted to string
-	return logs.currentLogFileSize + int64(len(messages))
+func (logs *Logs) logfileSize() int64 {
+	logfileStat, err := logs.currentLogfile.Stat()
+	if err != nil {
+		return 0
+	}
+	return logfileStat.Size()
 }
 
 func (logs *Logs) changeLogfileIfTooBig(fileSize int64) error {
@@ -148,12 +142,11 @@ func (logs *Logs) changeLogfileIfTooBig(fileSize int64) error {
 	}
 
 	logs.currentLogfile.Close()
-	logs.currentLogFileSize = 0
 	if err = logs.setupLogger(); err != nil {
 		return err
 	}
 
-	go logs.sendToS3(archivalLogFileName)
+	go logs.sendToS3(pathToArchivalLogFile)
 
 	return nil
 }
@@ -176,20 +169,32 @@ func (logs *Logs) getNextLogNumber(directoryPath string) (int, error) {
     highestLogNumber := 0
 	for _, file := range files {
 		match := regex.FindStringSubmatch(file.Name())
-		logfileNumber, err := strconv.Atoi(match[1])
-		if err != nil && highestLogNumber < logfileNumber {
+		logfileNumber := readLogfileNumberFromMatch(match)
+		if highestLogNumber <= logfileNumber {
 			highestLogNumber = logfileNumber
 		}
 	}
 	return highestLogNumber + 1, nil
 }
 
+func readLogfileNumberFromMatch(match []string) int {
+	if len(match) == 0 {
+		return 0
+	}
+	logfileNumber, err := strconv.Atoi(match[1])
+	if err != nil {
+		return 0
+	}
+	return logfileNumber
+}
+
 func (logs *Logs) sendToS3(pathToFile string) {
 	file, err := os.OpenFile(pathToFile, os.O_RDONLY, 0400)
-	if err != nil {
+	if err != nil || logs.uploader == nil {
 		return
 	}
+	logs.uploader.Upload(file)
+
 	defer file.Close()
 
-	// TODO call s3 api here
 }
