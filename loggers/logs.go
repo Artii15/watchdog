@@ -131,7 +131,7 @@ func (logs *Logs) updatedLogFileSize(messages ...interface{}) int64 {
 }
 
 func (logs *Logs) changeLogfileIfTooBig(fileSize int64) error {
-	if fileSize < logs.config.LogFileSplitThreshold {
+	if fileSize < logs.config.LogfileSplitThreshold {
 		return nil
 	}
 

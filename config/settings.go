@@ -1,27 +1,29 @@
 package config
 
-import "flag"
-
-const defaultLogFileLocation = "/var/log/watchdog"
+import (
+	"flag"
+	"github.com/Artii15/watchdog/loggers"
+)
 
 type ProgramSettings struct {
-	LogfileLocation string
 	DynamoDbTableName string
 	DynamoDbPrimaryKey string
 	SnsTopic string
+	LoggersConfig loggers.Config
 }
 
 func LoadProgramSettings() *ProgramSettings {
-	logfileLocation := flag.String("logfile", defaultLogFileLocation, "path to logfile")
 	dynamoDbTableName := flag.String("dynamo-table", "", "Dynamo DB table name")
 	dynamoDbPrimaryKey := flag.String("dynamo-key", "", "Primary key of configuration in Dynamo DB")
 	snsTopic := flag.String("sns", "", "SnS topic name")
+	logsDirPath := flag.String("logs-dir", "", "path to directory storing log files")
+	logfileSplitThreshold := flag.Int64("logfile-split-threshold", 0, "logfile size at which log file gonna be split")
 	flag.Parse()
 
 	return &ProgramSettings{
-		LogfileLocation: *logfileLocation,
 		DynamoDbTableName: *dynamoDbTableName,
 		DynamoDbPrimaryKey: *dynamoDbPrimaryKey,
 		SnsTopic: *snsTopic,
+		LoggersConfig: loggers.Config{LogsDirPath: *logsDirPath, LogfileSplitThreshold: *logfileSplitThreshold},
 	}
 }
