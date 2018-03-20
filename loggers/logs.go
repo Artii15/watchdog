@@ -66,6 +66,7 @@ func New(config Config) (*Logs, error) {
 }
 
 func (logs *Logs) setupLogger() error {
+	os.MkdirAll(logs.config.LogsDirPath, os.ModePerm)
 	logfile, err := logs.openLogfile(logs.config.LogsDirPath)
 	if err != nil {
 		return err
