@@ -16,10 +16,11 @@ var invalidSettings = config.ProgramSettings{
 }
 
 func TestValidator_Validate(t *testing.T) {
+	const expectedErrorsCount = 6
 	validator := New()
 
 	validator.Validate(invalidSettings)
-	if !validator.HasErrors() {
+	if !validator.HasErrors() || len(validator.errors) != expectedErrorsCount {
 		t.Error("Validator should have errors")
 	}
 }
@@ -31,7 +32,7 @@ func TestValidator_positive(t *testing.T) {
 	validator.positive(0, expectedError)
 
 	if len(validator.errors) != 1 || validator.errors[0] != expectedError {
-		t.Error("Expected expectedError", expectedError)
+		t.Error("Expected error", expectedError)
 	}
 }
 
@@ -42,6 +43,6 @@ func TestValidator_notEmpty(t *testing.T) {
 	validator.notEmpty("", expectedError)
 
 	if len(validator.errors) != 1 || validator.errors[0] != expectedError {
-		t.Error("Expected expectedError", expectedError)
+		t.Error("Expected error", expectedError)
 	}
 }
