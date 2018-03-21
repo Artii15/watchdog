@@ -7,6 +7,7 @@ import (
 	"sync"
 	"github.com/Artii15/watchdog/loggers"
 	"github.com/Artii15/watchdog/aws/sns"
+	"strings"
 )
 
 type checker struct {
@@ -26,9 +27,19 @@ func New(snsNotifier *sns.Notifier, loggersObject *loggers.Logs, responseChannel
 }
 
 func (checker *checker) Check(config *Config) {
-	newDeadServices := checker.getDeadServices(config)
+	newDeadServices := ignoreNotInstalledServices(checker.getDeadServices(config))
 	checker.handleNewDeadServices(newDeadServices, config)
 	checker.responseChannel<- true
+}
+
+func ignoreNotInstalledServices(deadServices []string) []string {
+	var deadInstalledServices []string
+	for _, deadService := range deadServices {
+		if isServiceInstalled(deadService) {
+			deadInstalledServices = append(deadInstalledServices, deadService)
+		}
+	}
+	return deadInstalledServices
 }
 
 func (checker *checker) getDeadServices(config *Config) []string {
@@ -111,4 +122,13 @@ func runCommand(commandName string, args ...string) *exec.Cmd {
 	command := exec.Command(commandName, args...)
 	command.Run()
 	return command
+}
+
+func isServiceInstalled(serviceName string) bool {
+	command := exec.Command("service", serviceName, "status")
+	command.Run()
+	commandStatus := command.ProcessState.String()
+	commandStatusFragments := strings.Split(commandStatus, " ")
+	statusCode := commandStatusFragments[len(commandStatusFragments)-1]
+	return statusCode != "4"
 }
