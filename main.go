@@ -29,7 +29,7 @@ func main()  {
 	var s3Uploader *s3.Uploader
 	if sessionError != nil {
 		logs.Error("Could not create aws session", sessionError)
-		panic("Exiting. No AWS session")
+		return
 	} else {
 		dynamoLoader = dynamo.New(awsSession, programSettings.DynamoDbTableName, programSettings.DynamoDbPrimaryKey, logs)
 		snsNotifier = sns.New(awsSession, programSettings.SnsTopic)
@@ -41,7 +41,7 @@ func main()  {
 	checkerConfig, dynamoErr := dynamoLoader.ReloadConfig()
 	if dynamoErr != nil {
 		logs.Error("Could not fetch config from dynamoDb", dynamoErr)
-		panic("Retrieving information about configuration was not possible")
+		return
 	}
 
 	servicesCheckingTicker := time.NewTicker(time.Duration(checkerConfig.NumOfSecCheck) * time.Second)
