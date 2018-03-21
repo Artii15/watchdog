@@ -15,6 +15,15 @@ var invalidSettings = config.ProgramSettings{
 	LoggersConfig: loggers.Config{LogfileSplitThreshold: 0, LogsDirPath: ""},
 }
 
+func TestValidator_Validate(t *testing.T) {
+	validator := New()
+
+	validator.Validate(invalidSettings)
+	if !validator.HasErrors() {
+		t.Error("Validator should have errors")
+	}
+}
+
 func TestValidator_positive(t *testing.T) {
 	validator := New()
 
@@ -26,3 +35,13 @@ func TestValidator_positive(t *testing.T) {
 	}
 }
 
+func TestValidator_notEmpty(t *testing.T) {
+	validator := New()
+
+	expectedError := errors.New("value is empty")
+	validator.notEmpty("", expectedError)
+
+	if len(validator.errors) != 1 || validator.errors[0] != expectedError {
+		t.Error("Expected expectedError", expectedError)
+	}
+}
