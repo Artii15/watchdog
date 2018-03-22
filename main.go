@@ -10,12 +10,18 @@ import (
 	"github.com/Artii15/watchdog/aws/s3"
 	"github.com/Artii15/watchdog/aws/dynamo"
 	"github.com/Artii15/watchdog/aws/sns"
+	"github.com/Artii15/watchdog/config/validator"
 )
 
 const configRefreshingIntervalInMinutes = 15
 
 func main()  {
 	programSettings := config.LoadProgramSettings()
+	validatorObject := validator.New()
+	validatorObject.Validate(programSettings)
+	if validatorObject.HasErrors() {
+		fmt.Println("Invalid config. Check program argunents")
+	}
 
 	logs, err := loggers.New(programSettings.LoggersConfig)
 	if err != nil {

@@ -34,7 +34,7 @@ func (validator *Validator) positive(value int64, error error) {
 	}
 }
 
-func (validator *Validator) Validate(settings config.ProgramSettings) {
+func (validator *Validator) Validate(settings *config.ProgramSettings) {
 	validator.errors = nil
 	validator.notEmpty(settings.DynamoDbTableName, EmptyDynamoDbTableName)
 	validator.notEmpty(settings.DynamoDbPrimaryKey, EmptyDynamoDbPrimaryKey)
